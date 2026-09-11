@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube to MP3 Converter Pro</title>
-  <!-- โหลด LAMEjs สำหรับแปลงเป็น MP3 แท้ในเบราว์เซอร์ -->
   <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap');
@@ -54,7 +53,6 @@
     #thumbnail-box img { width: 100%; display: block; }
     #video-title { font-size: 0.95rem; color: #e2e8f0; margin-top: 10px; font-weight: 600; }
     
-    /* Progress Bar */
     .progress-container { margin-top: 1.5rem; display: none; text-align: left; }
     .progress-text { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; color: #38bdf8; }
     .progress-bar-bg { width: 100%; height: 10px; background: #334155; border-radius: 6px; overflow: hidden; }
@@ -142,9 +140,11 @@
       progressBox.style.display = "block";
       updateProgress(5, "กำลังค้นหาสตรีมเสียง...");
 
+      // รายชื่อ Piped Instances ชุดใหม่ล่าสุด
       const pipedInstances = [
-        "https://pipedapi.kavin.rocks",
-        "https://api.piped.yt",
+        "https://pipedapi.mha.fi",
+        "https://piped-api.garudalinux.org",
+        "https://pipedapi.palvelintori.fi",
         "https://pipedapi.adminforge.de"
       ];
 
@@ -153,7 +153,11 @@
 
       for (const instance of pipedInstances) {
         try {
-          const res = await fetch(`${instance}/streams/${videoId}`);
+          // ใช้ CORS Proxy ครอบเพื่อทะลวงข้อจำกัด CORS จาก GitHub Pages
+          const targetUrl = `${instance}/streams/${videoId}`;
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+          
+          const res = await fetch(proxyUrl);
           if (!res.ok) continue;
 
           const data = await res.json();
@@ -170,43 +174,34 @@
             break;
           }
         } catch (e) {
-          console.error("Instance Failed:", instance);
+          console.error("Instance Failed via Proxy:", instance);
         }
       }
 
       if (!audioUrl) {
-        showError("❌ ไม่สามารถดึงสตรีมเสียงได้ โปรดลองคลิปอื่น");
+        showError("❌ ไม่สามารถดึงสตรีมเสียงได้ชั่วคราว เนื่องจากเซิร์ฟเวอร์หนาแน่น โปรดลองใหม่อีกครั้ง");
         return;
       }
 
       try {
-        updateProgress(20, "กำลังดาวน์โหลดสตรีมเสียง...");
+        updateProgress(20, "กำลังดาวน์โหลดไฟล์เสียง...");
         
-        // ใช้ CORS Proxy ถ้าจำเป็น
-        let fetchUrl = audioUrl;
-        let response;
-        try {
-          response = await fetch(fetchUrl);
-        } catch (e) {
-          fetchUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`;
-          response = await fetch(fetchUrl);
-        }
-
+        // ดึงไฟล์สตรีมเสียงผ่าน CORS Proxy
+        const audioProxyUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`;
+        const response = await fetch(audioProxyUrl);
         const arrayBuffer = await response.arrayBuffer();
 
         updateProgress(50, "กำลังถอดรหัสเสียง (Audio Decoding)...");
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-        updateProgress(70, "กำลังเข้ารหัสเป็น MP3 (Encoding)...");
+        updateProgress(70, "กำลังแปลงไฟล์เป็น MP3...");
         
-        // แปลง PCM เป็น MP3 ด้วย LAMEjs
         const mp3Blob = await convertToMp3(audioBuffer, (percent) => {
           const totalProgress = 70 + Math.floor(percent * 0.28);
           updateProgress(totalProgress, `กำลังเข้ารหัส MP3... (${percent}%)`);
         });
 
-        // สร้างลิงก์ดาวน์โหลด MP3
         const mp3Url = URL.createObjectURL(mp3Blob);
         const cleanFileName = videoTitle.replace(/[^\w\s\u0E00-\u0E7F-]/gi, '') + ".mp3";
 
@@ -218,19 +213,18 @@
 
       } catch (err) {
         console.error(err);
-        showError("❌ เกิดข้อผิดพลาดขณะแปลงไฟล์ MP3");
+        showError("❌ เกิดข้อผิดพลาดขณะแปลงเป็นไฟล์ MP3");
       } finally {
         btn.disabled = false;
       }
     }
 
-    // ฟังก์ชันแปลง AudioBuffer เป็น MP3 Blob
     function convertToMp3(audioBuffer, onProgress) {
       return new Promise((resolve) => {
         setTimeout(() => {
           const channels = audioBuffer.numberOfChannels;
           const sampleRate = audioBuffer.sampleRate;
-          const kbps = 192; // Quality Bitrate 192 kbps
+          const kbps = 192;
           const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
           
           const left = audioBuffer.getChannelData(0);
@@ -240,7 +234,6 @@
           const leftInt16 = new Int16Array(left.length);
           const rightInt16 = new Int16Array(right.length);
 
-          // แปลง Float32 เป็น Int16 PCM
           for (let i = 0; i < left.length; i++) {
             leftInt16[i] = left[i] < 0 ? left[i] * 0x8000 : left[i] * 0x7FFF;
             rightInt16[i] = right[i] < 0 ? right[i] * 0x8000 : right[i] * 0x7FFF;
@@ -253,12 +246,9 @@
             const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
             const rightChunk = rightInt16.subarray(i, i + sampleBlockSize);
             
-            let mp3buf;
-            if (channels === 2) {
-              mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
-            } else {
-              mp3buf = mp3encoder.encodeBuffer(leftChunk);
-            }
+            let mp3buf = (channels === 2) 
+              ? mp3encoder.encodeBuffer(leftChunk, rightChunk)
+              : mp3encoder.encodeBuffer(leftChunk);
 
             if (mp3buf.length > 0) mp3Data.push(mp3buf);
 
