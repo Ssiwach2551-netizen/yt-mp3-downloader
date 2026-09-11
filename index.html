@@ -57,14 +57,13 @@
       display: none; 
       width: 100%;
     }
-    /* ขยายความสูง iframe เป็น 300px เพื่อให้เห็นภาพปก ปุ่มประมวลผล และปุ่มดาวน์โหลดครบถ้วน */
+    
     iframe { 
-      width: 100%; 
-      height: 300px; 
-      border: none; 
-      border-radius: 12px; 
-      overflow: hidden; 
-    }
+  width: 100%; 
+  height: 480px; /* ขยายความสูงให้เห็นปุ่มกดและเมนูเลือกคุณภาพครบ */
+  border: none; 
+  border-radius: 12px; 
+}
     #error-msg { color: #ef4444; margin-top: 1rem; font-size: 0.9rem; }
   </style>
 </head>
@@ -79,10 +78,9 @@
 
     <div id="error-msg"></div>
 
-    <div id="result-box">
-      <iframe id="converter-frame" src="" scrolling="no"></iframe>
-    </div>
-  </div>
+   <div id="result-box">
+  <iframe id="converter-frame" src=""></iframe>
+</div>
 
   <script>
     function extractVideoId(url) {
