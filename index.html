@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Downloader Pro</title>
+  <title>YouTube to MP3 Converter Pro</title>
+  <!-- โหลด LAMEjs สำหรับแปลงเป็น MP3 แท้ในเบราว์เซอร์ -->
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap');
     
@@ -18,7 +20,7 @@
       padding: 20px; 
     }
     .card { 
-      background: rgba(30, 41, 59, 0.7); 
+      background: rgba(30, 41, 59, 0.75); 
       backdrop-filter: blur(16px);
       padding: 2.5rem; 
       border-radius: 20px; 
@@ -34,11 +36,11 @@
     .input-group { margin-bottom: 1.2rem; text-align: left; }
     .input-group label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 5px; display: block; }
     
-    input, select { 
+    input { 
       width: 100%; padding: 14px; border: 2px solid #334155; border-radius: 10px; 
       background: rgba(15, 23, 42, 0.6); color: #fff; font-size: 1rem; outline: none; transition: 0.3s;
     }
-    input:focus, select:focus { border-color: #8b5cf6; box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+    input:focus { border-color: #8b5cf6; box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
     
     button { 
       width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #6366f1); 
@@ -50,14 +52,19 @@
 
     #thumbnail-box { margin-top: 1.5rem; display: none; border-radius: 12px; overflow: hidden; }
     #thumbnail-box img { width: 100%; display: block; }
+    #video-title { font-size: 0.95rem; color: #e2e8f0; margin-top: 10px; font-weight: 600; }
     
-    #status-text { margin-top: 1rem; font-size: 0.95rem; color: #38bdf8; font-weight: 600; }
-    
+    /* Progress Bar */
+    .progress-container { margin-top: 1.5rem; display: none; text-align: left; }
+    .progress-text { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; color: #38bdf8; }
+    .progress-bar-bg { width: 100%; height: 10px; background: #334155; border-radius: 6px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #8b5cf6); width: 0%; transition: width 0.2s ease; }
+
     .dl-btn { 
       display: none; margin-top: 1.5rem; padding: 14px; 
       background: linear-gradient(135deg, #10b981, #059669); 
       color: white; text-decoration: none; border-radius: 10px; 
-      font-weight: 600; font-size: 1.1rem; 
+      font-weight: 600; font-size: 1.1rem; text-align: center;
     }
     
     #error-msg { color: #f43f5e; margin-top: 1rem; font-size: 0.9rem; font-weight: 600; }
@@ -66,32 +73,34 @@
 <body>
 
   <div class="card">
-    <h1>🚀 YouTube Converter Pro</h1>
-    <p>ไม่มีโฆษณา • โหลดตรง • คุณภาพสูงสุด</p>
+    <h1>🎵 YouTube to MP3 Pro</h1>
+    <p>แปลงเป็นไฟล์ .MP3 แท้ • ไม่มีโฆษณา • ปลอดภัย 100%</p>
     
     <div class="input-group">
       <label>🔗 ลิงก์ YouTube (URL)</label>
       <input type="text" id="ytUrl" placeholder="https://youtu.be/...">
     </div>
 
-    <div class="input-group">
-      <label>⚙️ เลือกรูปแบบ</label>
-      <select id="formatSelect">
-        <option value="audio">🎵 เสียง MP3</option>
-        <option value="auto">🎬 วิดีโอ MP4</option>
-      </select>
-    </div>
-
-    <button onclick="startConversion()" id="convert-btn">เริ่มแปลงไฟล์</button>
+    <button onclick="startConversion()" id="convert-btn">แปลงเป็น MP3</button>
 
     <div id="error-msg"></div>
-    <div id="status-text"></div>
 
     <div id="thumbnail-box">
       <img id="thumb-img" src="" alt="Thumbnail">
+      <div id="video-title"></div>
     </div>
 
-    <a href="#" id="download-btn" class="dl-btn" target="_blank" rel="noopener noreferrer">⬇️ ดาวน์โหลดไฟล์</a>
+    <div class="progress-container" id="progress-box">
+      <div class="progress-text">
+        <span id="status-text">กำลังประมวลผล...</span>
+        <span id="percent-text">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <a href="#" id="download-btn" class="dl-btn">⬇️ ดาวน์โหลดไฟล์ MP3</a>
   </div>
 
   <script>
@@ -101,21 +110,27 @@
       return (match && match[2].length === 11) ? match[2] : null;
     }
 
+    function updateProgress(percent, text) {
+      document.getElementById('progress-fill').style.width = percent + "%";
+      document.getElementById('percent-text').innerText = percent + "%";
+      document.getElementById('status-text').innerText = text;
+    }
+
     async function startConversion() {
       const urlInput = document.getElementById('ytUrl').value.trim();
-      const mode = document.getElementById('formatSelect').value;
       const btn = document.getElementById('convert-btn');
       const errorDiv = document.getElementById('error-msg');
-      const statusDiv = document.getElementById('status-text');
       const thumbBox = document.getElementById('thumbnail-box');
       const thumbImg = document.getElementById('thumb-img');
+      const titleDiv = document.getElementById('video-title');
+      const progressBox = document.getElementById('progress-box');
       const dlBtn = document.getElementById('download-btn');
       
-      // Reset หน้าจอ
+      // Reset UI
       errorDiv.innerText = "";
-      statusDiv.innerText = "";
       dlBtn.style.display = "none";
       thumbBox.style.display = "none";
+      progressBox.style.display = "none";
 
       const videoId = getYoutubeId(urlInput);
       if (!videoId) {
@@ -123,59 +138,149 @@
         return;
       }
 
-      // แสดงปกคลิป
-      thumbImg.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-      thumbBox.style.display = "block";
-
       btn.disabled = true;
-      statusDiv.innerText = "⏳ กำลังดึงลิงก์ดาวน์โหลดจากเซิร์ฟเวอร์...";
+      progressBox.style.display = "block";
+      updateProgress(5, "กำลังค้นหาสตรีมเสียง...");
 
-      // รายชื่อ API Instances ที่ใช้งานได้
-      const apiInstances = [
-        "https://co.wuk.sh/api/json",
-        "https://cobalt-api.kwiatekmoles.dev/api/json"
+      const pipedInstances = [
+        "https://pipedapi.kavin.rocks",
+        "https://api.piped.yt",
+        "https://pipedapi.adminforge.de"
       ];
 
-      let isSuccess = false;
+      let audioUrl = null;
+      let videoTitle = "youtube_audio";
 
-      for (const apiUrl of apiInstances) {
+      for (const instance of pipedInstances) {
         try {
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              url: `https://www.youtube.com/watch?v=${videoId}`,
-              downloadMode: mode,
-              audioFormat: "mp3"
-            })
-          });
+          const res = await fetch(`${instance}/streams/${videoId}`);
+          if (!res.ok) continue;
 
-          if (!response.ok) continue;
-
-          const data = await response.json();
-          const downloadUrl = data.url || (data.picker && data.picker[0] ? data.picker[0].url : null);
-
-          if (downloadUrl) {
-            statusDiv.innerText = "✅ แปลงไฟล์สำเร็จ!";
-            dlBtn.href = downloadUrl;
-            dlBtn.style.display = "block";
-            isSuccess = true;
+          const data = await res.json();
+          if (data && data.audioStreams && data.audioStreams.length > 0) {
+            const bestAudio = data.audioStreams.reduce((prev, current) => 
+              (prev.bitrate > current.bitrate) ? prev : current
+            );
+            audioUrl = bestAudio.url;
+            videoTitle = data.title || "youtube_audio";
+            
+            thumbImg.src = data.thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            titleDiv.innerText = videoTitle;
+            thumbBox.style.display = "block";
             break;
           }
         } catch (e) {
-          console.error("Instance Failed:", apiUrl);
+          console.error("Instance Failed:", instance);
         }
       }
 
-      if (!isSuccess) {
-        errorDiv.innerText = "❌ ไม่สามารถดึงไฟล์ได้ชั่วคราว เนื่องจากเซิร์ฟเวอร์ API หนาแน่น โปรดลองใหม่อีกครั้ง";
-        statusDiv.innerText = "";
+      if (!audioUrl) {
+        showError("❌ ไม่สามารถดึงสตรีมเสียงได้ โปรดลองคลิปอื่น");
+        return;
       }
 
-      btn.disabled = false;
+      try {
+        updateProgress(20, "กำลังดาวน์โหลดสตรีมเสียง...");
+        
+        // ใช้ CORS Proxy ถ้าจำเป็น
+        let fetchUrl = audioUrl;
+        let response;
+        try {
+          response = await fetch(fetchUrl);
+        } catch (e) {
+          fetchUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`;
+          response = await fetch(fetchUrl);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+
+        updateProgress(50, "กำลังถอดรหัสเสียง (Audio Decoding)...");
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+        updateProgress(70, "กำลังเข้ารหัสเป็น MP3 (Encoding)...");
+        
+        // แปลง PCM เป็น MP3 ด้วย LAMEjs
+        const mp3Blob = await convertToMp3(audioBuffer, (percent) => {
+          const totalProgress = 70 + Math.floor(percent * 0.28);
+          updateProgress(totalProgress, `กำลังเข้ารหัส MP3... (${percent}%)`);
+        });
+
+        // สร้างลิงก์ดาวน์โหลด MP3
+        const mp3Url = URL.createObjectURL(mp3Blob);
+        const cleanFileName = videoTitle.replace(/[^\w\s\u0E00-\u0E7F-]/gi, '') + ".mp3";
+
+        dlBtn.href = mp3Url;
+        dlBtn.setAttribute("download", cleanFileName);
+        dlBtn.style.display = "block";
+
+        updateProgress(100, "แปลงเป็น MP3 สำเร็จ! 🎉");
+
+      } catch (err) {
+        console.error(err);
+        showError("❌ เกิดข้อผิดพลาดขณะแปลงไฟล์ MP3");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ฟังก์ชันแปลง AudioBuffer เป็น MP3 Blob
+    function convertToMp3(audioBuffer, onProgress) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const channels = audioBuffer.numberOfChannels;
+          const sampleRate = audioBuffer.sampleRate;
+          const kbps = 192; // Quality Bitrate 192 kbps
+          const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+          
+          const left = audioBuffer.getChannelData(0);
+          const right = channels > 1 ? audioBuffer.getChannelData(1) : left;
+
+          const sampleBlockSize = 1152;
+          const leftInt16 = new Int16Array(left.length);
+          const rightInt16 = new Int16Array(right.length);
+
+          // แปลง Float32 เป็น Int16 PCM
+          for (let i = 0; i < left.length; i++) {
+            leftInt16[i] = left[i] < 0 ? left[i] * 0x8000 : left[i] * 0x7FFF;
+            rightInt16[i] = right[i] < 0 ? right[i] * 0x8000 : right[i] * 0x7FFF;
+          }
+
+          const mp3Data = [];
+          const totalChunks = Math.ceil(leftInt16.length / sampleBlockSize);
+
+          for (let i = 0; i < leftInt16.length; i += sampleBlockSize) {
+            const leftChunk = leftInt16.subarray(i, i + sampleBlockSize);
+            const rightChunk = rightInt16.subarray(i, i + sampleBlockSize);
+            
+            let mp3buf;
+            if (channels === 2) {
+              mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+            } else {
+              mp3buf = mp3encoder.encodeBuffer(leftChunk);
+            }
+
+            if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+            if (i % (sampleBlockSize * 100) === 0) {
+              const currentChunk = Math.floor(i / sampleBlockSize);
+              onProgress(Math.floor((currentChunk / totalChunks) * 100));
+            }
+          }
+
+          const mp3buf = mp3encoder.finish();
+          if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+          const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+          resolve(blob);
+        }, 10);
+      });
+    }
+
+    function showError(msg) {
+      document.getElementById('error-msg').innerText = msg;
+      document.getElementById('progress-box').style.display = "none";
+      document.getElementById('convert-btn').disabled = false;
     }
   </script>
 </body>
