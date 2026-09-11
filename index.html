@@ -3,117 +3,208 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube to MP3 Converter</title>
+  <title>YouTube Downloader Pro</title>
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap');
+    
+    * { box-sizing: border-box; font-family: 'Prompt', sans-serif; margin: 0; padding: 0; }
     body { 
-      background: #0f172a; 
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
       color: #f8fafc; 
       display: flex; 
       justify-content: center; 
       align-items: center; 
       min-height: 100vh; 
-      margin: 0; 
       padding: 20px; 
     }
     .card { 
-      background: #1e293b; 
-      padding: 2rem; 
-      border-radius: 16px; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+      background: rgba(30, 41, 59, 0.7); 
+      backdrop-filter: blur(16px);
+      padding: 2.5rem; 
+      border-radius: 20px; 
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
       width: 100%; 
-      max-width: 520px; 
+      max-width: 480px; 
       text-align: center; 
     }
-    h1 { margin-bottom: 0.5rem; font-size: 1.5rem; color: #38bdf8; }
-    p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    input { 
-      width: 100%; 
-      padding: 12px; 
-      border: 2px solid #334155; 
-      border-radius: 8px; 
-      background: #0f172a; 
-      color: #fff; 
-      font-size: 1rem; 
-      outline: none; 
-      margin-bottom: 1rem; 
+    h1 { font-size: 1.8rem; background: linear-gradient(to right, #38bdf8, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+    p { color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.5rem; }
+    
+    .input-group { margin-bottom: 1.2rem; text-align: left; }
+    .input-group label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 5px; display: block; }
+    
+    input, select { 
+      width: 100%; padding: 14px; border: 2px solid #334155; border-radius: 10px; 
+      background: rgba(15, 23, 42, 0.6); color: #fff; font-size: 1rem; outline: none; transition: 0.3s;
     }
-    input:focus { border-color: #38bdf8; }
+    input:focus, select:focus { border-color: #8b5cf6; box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+    
     button { 
-      width: 100%; 
-      padding: 12px; 
-      background: #0284c7; 
-      color: white; 
-      border: none; 
-      border-radius: 8px; 
-      font-size: 1rem; 
-      font-weight: bold; 
-      cursor: pointer; 
-      transition: 0.2s; 
+      width: 100%; padding: 14px; background: linear-gradient(135deg, #3b82f6, #6366f1); 
+      color: white; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; 
+      cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 0.5rem;
     }
-    button:hover { background: #0369a1; }
-    #result-box { 
-      margin-top: 1.5rem; 
-      display: none; 
-      width: 100%;
-    }
-    iframe { 
-      width: 100%; 
-      height: 480px; 
-      border: none; 
-      border-radius: 12px; 
-    }
-    #error-msg { color: #ef4444; margin-top: 1rem; font-size: 0.9rem; }
+    button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4); }
+    button:disabled { background: #475569; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ส่วนแสดงผล */
+    #thumbnail-box { margin-top: 1.5rem; display: none; border-radius: 12px; overflow: hidden; position: relative; }
+    #thumbnail-box img { width: 100%; display: block; }
+    
+    /* Progress Bar */
+    .progress-container { margin-top: 1.5rem; display: none; text-align: left; }
+    .progress-text { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; }
+    .progress-bar-bg { width: 100%; height: 12px; background: #334155; border-radius: 6px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 0.4s ease; }
+
+    #download-btn { display: none; background: linear-gradient(135deg, #10b981, #059669); margin-top: 1.5rem; text-decoration: none; text-align: center; display: inline-block; width: 100%; }
+    
+    #error-msg { color: #f43f5e; margin-top: 1rem; font-size: 0.9rem; font-weight: 600; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h1>🎵 แปลงคลิป YouTube เป็น MP3</h1>
-    <p>วางลิงก์ YouTube เพื่อดาวน์โหลด MP3 คุณภาพสูง</p>
+    <h1>🚀 YouTube Converter Pro</h1>
+    <p>ไม่มีโฆษณา • โหลดตรง • คุณภาพสูงสุด</p>
     
-    <input type="text" id="ytUrl" placeholder="วางลิงก์ YouTube ที่นี่...">
-    <button onclick="generateDownloadLink()">ดึงลิงก์ดาวน์โหลด</button>
+    <div class="input-group">
+      <label>🔗 ลิงก์ YouTube (URL)</label>
+      <input type="text" id="ytUrl" placeholder="https://youtu.be/...">
+    </div>
+
+    <div class="input-group">
+      <label>⚙️ เลือกรูปแบบที่ต้องการ</label>
+      <select id="formatSelect">
+        <option value="320">🎵 เสียง MP3 (คุณภาพสูงสุด 320kbps)</option>
+        <option value="mp3">🎵 เสียง MP3 (คุณภาพมาตรฐาน 128kbps)</option>
+        <option value="1080">🎬 วิดีโอ MP4 (ความละเอียด 1080p)</option>
+        <option value="720">🎬 วิดีโอ MP4 (ความละเอียด 720p)</option>
+      </select>
+    </div>
+
+    <button onclick="startConversion()" id="convert-btn">เริ่มแปลงไฟล์</button>
 
     <div id="error-msg"></div>
 
-    <div id="result-box">
-      <!-- ใส่ sandbox เพื่อบล็อกโฆษณา ป้องกันการเด้งไป Lazada หรือ YouTube -->
-      <iframe 
-        id="converter-frame" 
-        src="" 
-        sandbox="allow-scripts allow-same-origin allow-forms allow-downloads">
-      </iframe>
+    <div id="thumbnail-box">
+      <img id="thumb-img" src="" alt="Thumbnail">
     </div>
+
+    <div class="progress-container" id="progress-box">
+      <div class="progress-text">
+        <span id="status-text">กำลังเตรียมการ...</span>
+        <span id="percent-text">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <a href="#" id="download-btn" target="_blank">⬇️ ดาวน์โหลดไฟล์</a>
   </div>
 
   <script>
-    function extractVideoId(url) {
+    let checkInterval;
+
+    function getYoutubeId(url) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = url.match(regExp);
       return (match && match[2].length === 11) ? match[2] : null;
     }
 
-    function generateDownloadLink() {
+    async function startConversion() {
       const urlInput = document.getElementById('ytUrl').value.trim();
+      const format = document.getElementById('formatSelect').value;
+      const btn = document.getElementById('convert-btn');
       const errorDiv = document.getElementById('error-msg');
-      const resultBox = document.getElementById('result-box');
-      const iframe = document.getElementById('converter-frame');
-
+      const thumbBox = document.getElementById('thumbnail-box');
+      const thumbImg = document.getElementById('thumb-img');
+      const progressBox = document.getElementById('progress-box');
+      const dlBtn = document.getElementById('download-btn');
+      
+      // Reset UI
+      clearInterval(checkInterval);
       errorDiv.innerText = "";
-      resultBox.style.display = "none";
+      dlBtn.style.display = "none";
+      progressBox.style.display = "none";
+      updateProgress(0, "กำลังเชื่อมต่อเซิร์ฟเวอร์...");
 
-      const videoId = extractVideoId(urlInput);
-
+      const videoId = getYoutubeId(urlInput);
       if (!videoId) {
-        errorDiv.innerText = "⚠️ รูปแบบลิงก์ไม่ถูกต้อง กรุณาใส่ลิงก์ YouTube ที่ถูกต้อง";
+        errorDiv.innerText = "⚠️ ลิงก์ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
         return;
       }
 
-      const fullYoutubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      iframe.src = `https://loader.to/api/card/?url=${encodeURIComponent(fullYoutubeUrl)}&f=mp3`;
-      
-      resultBox.style.display = "block";
+      // แสดงปกคลิป
+      thumbImg.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      thumbBox.style.display = "block";
+
+      btn.disabled = true;
+      btn.innerText = "กำลังประมวลผล...";
+      progressBox.style.display = "block";
+
+      try {
+        // ใช้ API เบื้องหลัง (ไม่มีโฆษณา)
+        const apiUrl = `https://p.oceansaver.in/ajax/download.php?format=${format}&url=${encodeURIComponent(urlInput)}&api=dfcb6d76f2f6a9894gjkege8a4ab232222`;
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        if (data.success) {
+          checkProgress(data.id);
+        } else {
+          showError(data.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
+        }
+      } catch (e) {
+        showError("❌ ไม่สามารถเชื่อมต่อ API ได้");
+      }
+    }
+
+    function checkProgress(jobId) {
+      checkInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`https://p.oceansaver.in/ajax/progress.php?id=${jobId}`);
+          const data = await res.json();
+          
+          if (data.success) {
+            // คำนวณเปอร์เซ็นต์ (API ส่งกลับมาสูงสุด 1000 = 100%)
+            let percent = Math.floor(data.progress / 10);
+            if (percent > 100) percent = 100;
+            
+            updateProgress(percent, data.text || "กำลังดึงข้อมูล...");
+
+            if (data.download_url) {
+              clearInterval(checkInterval);
+              updateProgress(100, "แปลงไฟล์สำเร็จ! 🎉");
+              
+              // แสดงปุ่มโหลด คืนค่าปุ่มแปลงไฟล์
+              document.getElementById('download-btn').href = data.download_url;
+              document.getElementById('download-btn').style.display = "block";
+              
+              const btn = document.getElementById('convert-btn');
+              btn.disabled = false;
+              btn.innerText = "แปลงไฟล์คลิปอื่นต่อ";
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, 2500); // เช็กสถานะทุกๆ 2.5 วินาที
+    }
+
+    function updateProgress(percent, text) {
+      document.getElementById('progress-fill').style.width = percent + "%";
+      document.getElementById('percent-text').innerText = percent + "%";
+      document.getElementById('status-text').innerText = text;
+    }
+
+    function showError(msg) {
+      document.getElementById('error-msg').innerText = msg;
+      document.getElementById('progress-box').style.display = "none";
+      const btn = document.getElementById('convert-btn');
+      btn.disabled = false;
+      btn.innerText = "เริ่มแปลงไฟล์";
     }
   </script>
 </body>
