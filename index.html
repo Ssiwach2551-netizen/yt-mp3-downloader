@@ -48,17 +48,17 @@
     button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4); }
     button:disabled { background: #475569; cursor: not-allowed; transform: none; box-shadow: none; }
 
-    /* ส่วนแสดงผล */
-    #thumbnail-box { margin-top: 1.5rem; display: none; border-radius: 12px; overflow: hidden; position: relative; }
+    #thumbnail-box { margin-top: 1.5rem; display: none; border-radius: 12px; overflow: hidden; }
     #thumbnail-box img { width: 100%; display: block; }
     
-    /* Progress Bar */
-    .progress-container { margin-top: 1.5rem; display: none; text-align: left; }
-    .progress-text { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; font-weight: 600; }
-    .progress-bar-bg { width: 100%; height: 12px; background: #334155; border-radius: 6px; overflow: hidden; }
-    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); width: 0%; transition: width 0.4s ease; }
-
-    #download-btn { display: none; background: linear-gradient(135deg, #10b981, #059669); margin-top: 1.5rem; text-decoration: none; text-align: center; display: inline-block; width: 100%; }
+    #status-text { margin-top: 1rem; font-size: 0.95rem; color: #38bdf8; font-weight: 600; }
+    
+    .dl-btn { 
+      display: none; margin-top: 1.5rem; padding: 14px; 
+      background: linear-gradient(135deg, #10b981, #059669); 
+      color: white; text-decoration: none; border-radius: 10px; 
+      font-weight: 600; font-size: 1.1rem; 
+    }
     
     #error-msg { color: #f43f5e; margin-top: 1rem; font-size: 0.9rem; font-weight: 600; }
   </style>
@@ -75,39 +75,26 @@
     </div>
 
     <div class="input-group">
-      <label>⚙️ เลือกรูปแบบที่ต้องการ</label>
+      <label>⚙️ เลือกรูปแบบ</label>
       <select id="formatSelect">
-        <option value="320">🎵 เสียง MP3 (คุณภาพสูงสุด 320kbps)</option>
-        <option value="mp3">🎵 เสียง MP3 (คุณภาพมาตรฐาน 128kbps)</option>
-        <option value="1080">🎬 วิดีโอ MP4 (ความละเอียด 1080p)</option>
-        <option value="720">🎬 วิดีโอ MP4 (ความละเอียด 720p)</option>
+        <option value="audio">🎵 เสียง MP3</option>
+        <option value="auto">🎬 วิดีโอ MP4</option>
       </select>
     </div>
 
     <button onclick="startConversion()" id="convert-btn">เริ่มแปลงไฟล์</button>
 
     <div id="error-msg"></div>
+    <div id="status-text"></div>
 
     <div id="thumbnail-box">
       <img id="thumb-img" src="" alt="Thumbnail">
     </div>
 
-    <div class="progress-container" id="progress-box">
-      <div class="progress-text">
-        <span id="status-text">กำลังเตรียมการ...</span>
-        <span id="percent-text">0%</span>
-      </div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progress-fill"></div>
-      </div>
-    </div>
-
-    <a href="#" id="download-btn" target="_blank">⬇️ ดาวน์โหลดไฟล์</a>
+    <a href="#" id="download-btn" class="dl-btn" target="_blank" rel="noopener noreferrer">⬇️ ดาวน์โหลดไฟล์</a>
   </div>
 
   <script>
-    let checkInterval;
-
     function getYoutubeId(url) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = url.match(regExp);
@@ -116,24 +103,23 @@
 
     async function startConversion() {
       const urlInput = document.getElementById('ytUrl').value.trim();
-      const format = document.getElementById('formatSelect').value;
+      const mode = document.getElementById('formatSelect').value;
       const btn = document.getElementById('convert-btn');
       const errorDiv = document.getElementById('error-msg');
+      const statusDiv = document.getElementById('status-text');
       const thumbBox = document.getElementById('thumbnail-box');
       const thumbImg = document.getElementById('thumb-img');
-      const progressBox = document.getElementById('progress-box');
       const dlBtn = document.getElementById('download-btn');
       
-      // Reset UI
-      clearInterval(checkInterval);
+      // Reset หน้าจอ
       errorDiv.innerText = "";
+      statusDiv.innerText = "";
       dlBtn.style.display = "none";
-      progressBox.style.display = "none";
-      updateProgress(0, "กำลังเชื่อมต่อเซิร์ฟเวอร์...");
+      thumbBox.style.display = "none";
 
       const videoId = getYoutubeId(urlInput);
       if (!videoId) {
-        errorDiv.innerText = "⚠️ ลิงก์ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
+        errorDiv.innerText = "⚠️ รูปแบบลิงก์ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
         return;
       }
 
@@ -142,69 +128,54 @@
       thumbBox.style.display = "block";
 
       btn.disabled = true;
-      btn.innerText = "กำลังประมวลผล...";
-      progressBox.style.display = "block";
+      statusDiv.innerText = "⏳ กำลังดึงลิงก์ดาวน์โหลดจากเซิร์ฟเวอร์...";
 
-      try {
-        // ใช้ API เบื้องหลัง (ไม่มีโฆษณา)
-        const apiUrl = `https://p.oceansaver.in/ajax/download.php?format=${format}&url=${encodeURIComponent(urlInput)}&api=dfcb6d76f2f6a9894gjkege8a4ab232222`;
-        const res = await fetch(apiUrl);
-        const data = await res.json();
+      // รายชื่อ API Instances ที่ใช้งานได้
+      const apiInstances = [
+        "https://co.wuk.sh/api/json",
+        "https://cobalt-api.kwiatekmoles.dev/api/json"
+      ];
 
-        if (data.success) {
-          checkProgress(data.id);
-        } else {
-          showError(data.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
-        }
-      } catch (e) {
-        showError("❌ ไม่สามารถเชื่อมต่อ API ได้");
-      }
-    }
+      let isSuccess = false;
 
-    function checkProgress(jobId) {
-      checkInterval = setInterval(async () => {
+      for (const apiUrl of apiInstances) {
         try {
-          const res = await fetch(`https://p.oceansaver.in/ajax/progress.php?id=${jobId}`);
-          const data = await res.json();
-          
-          if (data.success) {
-            // คำนวณเปอร์เซ็นต์ (API ส่งกลับมาสูงสุด 1000 = 100%)
-            let percent = Math.floor(data.progress / 10);
-            if (percent > 100) percent = 100;
-            
-            updateProgress(percent, data.text || "กำลังดึงข้อมูล...");
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              url: `https://www.youtube.com/watch?v=${videoId}`,
+              downloadMode: mode,
+              audioFormat: "mp3"
+            })
+          });
 
-            if (data.download_url) {
-              clearInterval(checkInterval);
-              updateProgress(100, "แปลงไฟล์สำเร็จ! 🎉");
-              
-              // แสดงปุ่มโหลด คืนค่าปุ่มแปลงไฟล์
-              document.getElementById('download-btn').href = data.download_url;
-              document.getElementById('download-btn').style.display = "block";
-              
-              const btn = document.getElementById('convert-btn');
-              btn.disabled = false;
-              btn.innerText = "แปลงไฟล์คลิปอื่นต่อ";
-            }
+          if (!response.ok) continue;
+
+          const data = await response.json();
+          const downloadUrl = data.url || (data.picker && data.picker[0] ? data.picker[0].url : null);
+
+          if (downloadUrl) {
+            statusDiv.innerText = "✅ แปลงไฟล์สำเร็จ!";
+            dlBtn.href = downloadUrl;
+            dlBtn.style.display = "block";
+            isSuccess = true;
+            break;
           }
         } catch (e) {
-          console.error(e);
+          console.error("Instance Failed:", apiUrl);
         }
-      }, 2500); // เช็กสถานะทุกๆ 2.5 วินาที
-    }
+      }
 
-    function updateProgress(percent, text) {
-      document.getElementById('progress-fill').style.width = percent + "%";
-      document.getElementById('percent-text').innerText = percent + "%";
-      document.getElementById('status-text').innerText = text;
-    }
+      if (!isSuccess) {
+        errorDiv.innerText = "❌ ไม่สามารถดึงไฟล์ได้ชั่วคราว เนื่องจากเซิร์ฟเวอร์ API หนาแน่น โปรดลองใหม่อีกครั้ง";
+        statusDiv.innerText = "";
+      }
 
-    function showError(msg) {
-      document.getElementById('error-msg').innerText = msg;
-      document.getElementById('progress-box').style.display = "none";
-      const btn = document.getElementById('convert-btn');
       btn.disabled = false;
-      btn.innerText = "เริ่มแปลงไฟล์";
     }
   </script>
 </body>
