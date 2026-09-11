@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube to MP3 Converter</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 480px; text-align: center; }
+    h1 { margin-bottom: 0.5rem; font-size: 1.5rem; color: #38bdf8; }
+    p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    input { width: 100%; padding: 12px; border: 2px solid #334155; border-radius: 8px; background: #0f172a; color: #fff; font-size: 1rem; outline: none; margin-bottom: 1rem; }
+    input:focus { border-color: #38bdf8; }
+    button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #0369a1; }
+    #status { margin-top: 1.5rem; font-size: 0.95rem; word-break: break-all; }
+    a.dl-btn { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #22c55e; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>🎵 แปลงคลิป YouTube เป็น MP3</h1>
+    <p>ใส่ลิงก์คลิปที่คุณต้องการแปลงเป็นไฟล์เสียงคุณภาพสูง</p>
+    
+    <input type="text" id="ytUrl" placeholder="วางลิงก์ YouTube ที่นี่...">
+    <button onclick="convertVideo()" id="btn">แปลงไฟล์ MP3</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // ⚠️ นำ URL ของ Google Apps Script ที่ได้จากขั้นตอนที่ 1 มาวางแทนที่ตรงนี้
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwiEc9SdMrIo4tL5Bx0NSAZOM7Uovfw_NHAvBIrMtocwWw3Xfw1Y86mQNvWGdt4qPAC/exec";
+
+    async function convertVideo() {
+      const url = document.getElementById('ytUrl').value.trim();
+      const statusDiv = document.getElementById('status');
+      const btn = document.getElementById('btn');
+
+      if (!url) {
+        statusDiv.innerHTML = "⚠️ กรุณากรอกลิงก์ YouTube ก่อนครับ";
+        return;
+      }
+
+      btn.disabled = true;
+      statusDiv.innerHTML = "⏳ กำลังประมวลผล ดึงไฟล์เสียงคุณภาพสูง...";
+
+      try {
+        // ส่งข้อมูลแบบ text/plain เพื่อป้องกันปัญหา CORS กับ GAS
+        const response = await fetch(GAS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ url: url })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          statusDiv.innerHTML = `
+            ✅ แปลงไฟล์สำเร็จ!<br><br>
+            <a href="${data.downloadUrl}" class="dl-btn" target="_blank" download>ดาวน์โหลด MP3</a>
+          `;
+        } else {
+          statusDiv.innerHTML = "❌ " + data.message;
+        }
+      } catch (err) {
+        statusDiv.innerHTML = "❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
